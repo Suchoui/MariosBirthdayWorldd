@@ -1,0 +1,102 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Mario's Birthday World</title>
+  <style>
+    body { margin:0; padding:0; overflow:hidden; background:#000; }
+    #game-container { width:100vw; height:100vh; }
+    button { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      padding:20px 40px; font-size:2rem; background:rgba(255,255,255,0.8);
+      border:none; border-radius:10px; cursor:pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container"></div>
+  <button id="start-btn">¡Jugar!</button>
+
+  <script src="phaser.min.js"></script>
+  <script>
+    const mensajesSalto = ["¡Lo haces genial!","¡Te amo!","¡Así es!"];
+    const mensajesMuerte = ["¡Puedes intentarlo otra vez!","¡Ánimo!","¡Tú puedes!"];
+    const config = {
+      type: Phaser.AUTO,
+      width: 800, height: 600,
+      parent: 'game-container',
+      physics: { default: 'arcade', arcade: { gravity: { y: 800 }, debug: false } },
+      scene: {
+        preload() {
+          this.load.image('star', 'star.png');
+          this.load.image('heart', 'heart.png');
+          this.load.spritesheet('player', 'player.png', { frameWidth: 32, frameHeight: 48 });
+          this.load.audio('jump', 'jump.mp3');
+          this.load.audio('collect', 'collect.mp3');
+          this.load.audio('bgm', 'bgm.mp3');
+        },
+        create() {
+          this.add.tileSprite(400, 300, 800, 600, null).setFillStyle(0x000020);
+          this.platforms = this.physics.add.staticGroup();
+          for(let i=0; i<5; i++){
+            this.platforms.create(150 + i*130, 450-i*80, 'star').setScale(0.5).refreshBody();
+          }
+          this.player = this.physics.add.sprite(100, 450, 'player');
+          this.player.setBounce(0.2).setCollideWorldBounds(true);
+          this.physics.add.collider(this.player, this.platforms);
+          this.cursors = this.input.keyboard.createCursorKeys();
+
+          this.collectSound = this.sound.add('collect');
+          this.jumpSound = this.sound.add('jump');
+          this.bgm = this.sound.add('bgm', { volume: 0.3, loop: true });
+          this.bgm.play();
+
+          this.stars = this.physics.add.group();
+          for(let i=0;i<10;i++){
+            let s = this.stars.create(100 + i*60, 0, 'heart').setScale(0.2);
+            s.setBounce(Phaser.Math.FloatBetween(0.4,0.8));
+          }
+          this.physics.add.collider(this.stars, this.platforms);
+          this.physics.add.overlap(this.player, this.stars, this.collectStar, null, this);
+
+          this.mensaje = this.add.text(400,50,'',{ font: '24px Arial', fill: '#FFFFFF' }).setOrigin(0.5);
+        },
+        update() {
+          if (this.cursors.left.isDown) this.player.setVelocityX(-160);
+          else if (this.cursors.right.isDown) this.player.setVelocityX(160);
+          else this.player.setVelocityX(0);
+
+          if (this.cursors.up.isDown && this.player.body.touching.down) {
+            this.player.setVelocityY(-400);
+            this.jumpSound.play();
+            this.showMensaje(mensajesSalto);
+          }
+
+          if (this.player.y > 600) {
+            this.player.setX(100); this.player.setY(450);
+            this.showMensaje(mensajesMuerte);
+          }
+        },
+        collectStar(player, star) {
+          star.disableBody(true,true);
+          this.collectSound.play();
+          if (this.stars.countActive(true) === 0) {
+            this.mensaje.setText("Feliz cumpleaños, eres lo mejor que me ha pasado en la vida y quiero celebrar cada día tu existencia.");
+            this.bgm.stop();
+          }
+        },
+        showMensaje(arr) {
+          const msg = Phaser.Utils.Array.GetRandom(arr);
+          this.mensaje.setText(msg);
+          this.time.delayedCall(1500, () => this.mensaje.setText(''), [], this);
+        }
+      }
+    };
+    let game;
+    document.getElementById('start-btn').onclick = () => {
+      document.getElementById('start-btn').style.display = 'none';
+      game = new Phaser.Game(config);
+    };
+  </script>
+</body>
+</html>
